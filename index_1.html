@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>รายรับ-รายจ่าย ร้านหน้าบ้าน</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f5f5f0; color: #1a1a1a; font-size: 15px; }
+  h1 { font-size: 20px; font-weight: 600; padding: 1rem 1rem 0; }
+  .subtitle { font-size: 13px; color: #888; padding: 2px 1rem 0.25rem; }
+  .sync-status { font-size: 12px; padding: 2px 1rem 0.75rem; }
+  .sync-ok { color: #2d7d3a; } .sync-err { color: #c0392b; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 1rem 2rem; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab { padding: 8px 16px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #666; font-size: 14px; cursor: pointer; font-family: Arial, sans-serif; }
+  .tab.active { background: #eef7ef; color: #2d7d3a; font-weight: 600; border-color: #2d7d3a; }
+  .section { display: none; } .section.active { display: block; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .card { background: #fff; border-radius: 10px; padding: 1rem; border: 1px solid #eee; }
+  .card-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+  .card-value { font-size: 20px; font-weight: 700; }
+  .card-value.income { color: #2d7d3a; } .card-value.expense { color: #c0392b; }
+  .card-value.pos { color: #2d7d3a; } .card-value.neg { color: #c0392b; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group label { font-size: 13px; color: #555; }
+  input, select { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #1a1a1a; font-size: 14px; font-family: Arial, sans-serif; outline: none; }
+  input:focus, select:focus { border-color: #2d7d3a; }
+  .btn { padding: 9px 20px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #1a1a1a; font-size: 14px; cursor: pointer; font-family: Arial, sans-serif; }
+  .btn-primary { background: #eef7ef; border-color: #2d7d3a; color: #2d7d3a; font-weight: 600; }
+  .btn-red { background: #fff0f0; border-color: #e88; color: #c0392b; font-weight: 600; }
+  .btn-sm-del { background: #fff0f0; border: 1px solid #e88; color: #c0392b; font-size: 12px; padding: 4px 10px; cursor: pointer; border-radius: 6px; font-family: Arial, sans-serif; }
+  .btn-excel { background: #fff; border: 1px solid #bbb; color: #333; font-size: 13px; padding: 7px 14px; cursor: pointer; border-radius: 8px; font-family: Arial, sans-serif; }
+  .card-form { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; }
+  .section-title { font-size: 15px; font-weight: 600; margin-bottom: 1rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: #888; font-weight: 600; padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 12px; }
+  td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
+  .badge-income { background: #eef7ef; color: #2d7d3a; }
+  .badge-expense { background: #fff0f0; color: #c0392b; }
+  .empty { text-align: center; color: #bbb; padding: 2rem; font-size: 14px; }
+  .loading { text-align: center; color: #aaa; padding: 2rem; font-size: 14px; }
+  .stock-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 13px; }
+  .stock-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; margin-bottom: 6px; }
+  .stock-header span { font-size: 12px; color: #888; font-weight: 600; }
+  .chart-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .chart-label { font-size: 12px; color: #888; min-width: 100px; text-align: right; }
+  .chart-bar-bg { flex: 1; background: #f0f0f0; border-radius: 4px; height: 18px; overflow: hidden; }
+  .chart-bar-fill { height: 100%; border-radius: 4px; }
+  .chart-val { font-size: 12px; color: #888; min-width: 75px; }
+  .filter-row { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+  .filter-row label { font-size: 13px; color: #555; }
+  .filter-row select { width: auto; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 8px; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  @media(max-width:600px) {
+    .form-row.three { grid-template-columns: 1fr 1fr; }
+    .stock-row, .stock-header { grid-template-columns: 2fr 1fr auto; }
+    .stock-row span:nth-child(3), .stock-row span:nth-child(4),
+    .stock-header span:nth-child(3), .stock-header span:nth-child(4) { display: none; }
+    table { font-size: 12px; } th, td { padding: 6px 6px; }
+  }
+</style>
+</head>
+<body>
+<h1>รายรับ-รายจ่าย ร้านหน้าบ้าน</h1>
+<p class="subtitle">บันทึกรายรับ รายจ่าย สต็อก และดูสรุปกำไรขาดทุนรายเดือน</p>
+<p class="sync-status" id="sync-status">กำลังเชื่อมต่อ Firebase...</p>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab active" id="tab-btn-dashboard">ภาพรวม</button>
+    <button class="tab" id="tab-btn-income">บันทึกรายรับ</button>
+    <button class="tab" id="tab-btn-expense">บันทึกรายจ่าย</button>
+    <button class="tab" id="tab-btn-stock">สต็อกสินค้า</button>
+    <button class="tab" id="tab-btn-history">ประวัติ</button>
+  </div>
+
+  <div id="tab-dashboard" class="section active">
+    <div class="topbar">
+      <div class="filter-row" style="margin:0">
+        <label>เดือน:</label>
+        <select id="dash-month"></select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-excel" id="btn-export-month">↓ Excel (เดือนนี้)</button>
+        <button class="btn btn-excel" id="btn-export-all">↓ Excel ทั้งหมด</button>
+      </div>
+    </div>
+    <div class="cards" id="dash-cards"></div>
+    <div class="card-form">
+      <div class="section-title">รายรับ-รายจ่ายแยกหมวด</div>
+      <div id="dash-chart"></div>
+    </div>
+  </div>
+
+  <div id="tab-income" class="section">
+    <div class="card-form">
+      <div class="section-title">เพิ่มรายรับ</div>
+      <div class="form-row three">
+        <div class="form-group"><label>วันที่</label><input type="date" id="inc-date"></div>
+        <div class="form-group"><label>หมวดหมู่</label>
+          <select id="inc-cat"><option>ขายอาหาร</option><option>ขายเครื่องดื่ม</option><option>เดลิเวอรี่</option><option>อื่นๆ</option></select>
+        </div>
+        <div class="form-group"><label>จำนวนเงิน (บาท)</label><input type="number" id="inc-amount" placeholder="0" min="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="grid-column:1/-1"><label>หมายเหตุ</label><input type="text" id="inc-note" placeholder="เช่น ยอดขายช่วงเที่ยง"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-add-income">บันทึกรายรับ</button>
+        <button class="btn btn-excel" id="btn-export-income">↓ Excel รายรับ</button>
+      </div>
+    </div>
+    <div id="income-list"><div class="loading">กำลังโหลด...</div></div>
+  </div>
+
+  <div id="tab-expense" class="section">
+    <div class="card-form">
+      <div class="section-title">เพิ่มรายจ่าย</div>
+      <div class="form-row three">
+        <div class="form-group"><label>วันที่</label><input type="date" id="exp-date"></div>
+        <div class="form-group"><label>หมวดหมู่</label>
+          <select id="exp-cat"><option>วัตถุดิบ</option><option>เครื่องปรุง/เครื่องดื่ม</option><option>ค่าแก๊ส/น้ำ/ไฟ</option><option>บรรจุภัณฑ์</option><option>ค่าจ้าง</option><option>อื่นๆ</option></select>
+        </div>
+        <div class="form-group"><label>จำนวนเงิน (บาท)</label><input type="number" id="exp-amount" placeholder="0" min="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="grid-column:1/-1"><label>หมายเหตุ</label><input type="text" id="exp-note" placeholder="เช่น ซื้อผักสด 2 กก."></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-red" id="btn-add-expense">บันทึกรายจ่าย</button>
+        <button class="btn btn-excel" id="btn-export-expense">↓ Excel รายจ่าย</button>
+      </div>
+    </div>
+    <div id="expense-list"><div class="loading">กำลังโหลด...</div></div>
+  </div>
+
+  <div id="tab-stock" class="section">
+    <div class="card-form">
+      <div class="section-title">เพิ่ม/แก้ไขสต็อก</div>
+      <div class="form-row three">
+        <div class="form-group"><label>ชื่อสินค้า/วัตถุดิบ</label><input type="text" id="stk-name" placeholder="เช่น หมูสับ"></div>
+        <div class="form-group"><label>จำนวน</label><input type="number" id="stk-qty" placeholder="0" min="0"></div>
+        <div class="form-group"><label>หน่วย</label>
+          <select id="stk-unit"><option>กก.</option><option>กรัม</option><option>ลิตร</option><option>ขวด</option><option>ถุง</option><option>ชิ้น</option><option>อื่นๆ</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>ต้นทุน/หน่วย (บาท)</label><input type="number" id="stk-cost" placeholder="0" min="0"></div>
+        <div class="form-group"><label>แจ้งเตือนเมื่อเหลือ</label><input type="number" id="stk-min" placeholder="0" min="0"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-add-stock">บันทึกสต็อก</button>
+        <button class="btn btn-excel" id="btn-export-stock">↓ Excel สต็อก</button>
+      </div>
+    </div>
+    <div class="card-form">
+      <div class="section-title">สต็อกปัจจุบัน</div>
+      <div class="stock-header"><span>สินค้า</span><span>จำนวน</span><span>หน่วย</span><span>ต้นทุน/หน่วย</span><span></span></div>
+      <div id="stock-list"><div class="loading">กำลังโหลด...</div></div>
+    </div>
+  </div>
+
+  <div id="tab-history" class="section">
+    <div class="topbar">
+      <div class="filter-row" style="margin:0">
+        <label>เดือน:</label>
+        <select id="hist-month"></select>
+        <label>ประเภท:</label>
+        <select id="hist-type">
+          <option value="all">ทั้งหมด</option><option value="income">รายรับ</option><option value="expense">รายจ่าย</option>
+        </select>
+      </div>
+      <button class="btn btn-excel" id="btn-export-history">↓ Excel ประวัติ</button>
+    </div>
+    <div id="hist-table"><div class="loading">กำลังโหลด...</div></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCRJ583WtweGY-75e6CW7-cgXckbxyMrj0",
+  authDomain: "income-expenses-banrus.firebaseapp.com",
+  databaseURL: "https://income-expenses-banrus-default-rtdb.firebaseio.com",
+  projectId: "income-expenses-banrus",
+  storageBucket: "income-expenses-banrus.firebasestorage.app",
+  messagingSenderId: "337416966523",
+  appId: "1:337416966523:web:e8565738122b78d6312dde"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const statusEl = document.getElementById('sync-status');
+
+let entries = {};
+let stockData = {};
+
+function today() { return new Date().toISOString().slice(0,10); }
+document.getElementById('inc-date').value = today();
+document.getElementById('exp-date').value = today();
+
+// Firebase listeners
+db.ref('entries').on('value', snap => {
+  entries = snap.val() || {};
+  statusEl.textContent = '● เชื่อมต่อแล้ว — sync อัตโนมัติ';
+  statusEl.className = 'sync-status sync-ok';
+  buildMonthOptions('dash-month');
+  buildMonthOptions('hist-month');
+  renderDashboard();
+  renderRecentList('income');
+  renderRecentList('expense');
+  renderHistory();
+}, err => {
+  statusEl.textContent = '● เชื่อมต่อไม่ได้: ' + err.message;
+  statusEl.className = 'sync-status sync-err';
+});
+
+db.ref('stock').on('value', snap => {
+  stockData = snap.val() || {};
+  renderStock();
+});
+
+function entriesList() {
+  return Object.entries(entries).map(([k,v]) => ({key:k, ...v}));
+}
+
+// Tab switching
+['dashboard','income','expense','stock','history'].forEach(name => {
+  document.getElementById('tab-btn-'+name).addEventListener('click', () => showTab(name));
+});
+
+function showTab(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('tab-btn-'+name).classList.add('active');
+}
+
+// Add entry
+document.getElementById('btn-add-income').addEventListener('click', () => addEntry('income'));
+document.getElementById('btn-add-expense').addEventListener('click', () => addEntry('expense'));
+
+function addEntry(type) {
+  const p = type==='income' ? 'inc' : 'exp';
+  const date = document.getElementById(p+'-date').value;
+  const cat = document.getElementById(p+'-cat').value;
+  const amount = parseFloat(document.getElementById(p+'-amount').value);
+  const note = document.getElementById(p+'-note').value;
+  if(!date || !amount || amount<=0) { alert('กรุณาใส่วันที่และจำนวนเงินให้ถูกต้อง'); return; }
+  db.ref('entries').push({type, date, cat, amount, note: note||''});
+  document.getElementById(p+'-amount').value = '';
+  document.getElementById(p+'-note').value = '';
+}
+
+// Add stock
+document.getElementById('btn-add-stock').addEventListener('click', () => {
+  const name = document.getElementById('stk-name').value.trim();
+  const qty = parseFloat(document.getElementById('stk-qty').value);
+  const unit = document.getElementById('stk-unit').value;
+  const cost = parseFloat(document.getElementById('stk-cost').value)||0;
+  const min = parseFloat(document.getElementById('stk-min').value)||0;
+  if(!name || isNaN(qty)) { alert('กรุณาใส่ชื่อและจำนวน'); return; }
+  const key = name.replace(/[.#$\[\]\/]/g,'_');
+  db.ref('stock/'+key).set({name, qty, unit, cost, min});
+  ['stk-name','stk-qty','stk-cost','stk-min'].forEach(id => document.getElementById(id).value = '');
+});
+
+// Delete (called from innerHTML buttons)
+window.deleteEntry = function(key) {
+  if(!confirm('ลบรายการนี้?')) return;
+  db.ref('entries/'+key).remove();
+};
+window.deleteStock = function(key) {
+  if(!confirm('ลบสต็อกนี้?')) return;
+  db.ref('stock/'+key).remove();
+};
+
+// Month filter
+document.getElementById('dash-month').addEventListener('change', renderDashboard);
+document.getElementById('hist-month').addEventListener('change', renderHistory);
+document.getElementById('hist-type').addEventListener('change', renderHistory);
+
+function buildMonthOptions(selId) {
+  const sel = document.getElementById(selId); if(!sel) return;
+  const months = new Set();
+  entriesList().forEach(e => { if(e.date) months.add(e.date.slice(0,7)); });
+  const now = today().slice(0,7); months.add(now);
+  const sorted = [...months].sort().reverse();
+  const cur = sel.value || now;
+  sel.innerHTML = sorted.map(m => {
+    const [y,mo] = m.split('-');
+    return `<option value="${m}"${m===cur?' selected':''}>${mo}/${y}</option>`;
+  }).join('');
+}
+
+function renderDashboard() {
+  const month = document.getElementById('dash-month').value;
+  const filtered = entriesList().filter(e => e.date && e.date.startsWith(month));
+  const income = filtered.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const expense = filtered.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const profit = income - expense;
+  document.getElementById('dash-cards').innerHTML = `
+    <div class="card"><div class="card-label">รายรับทั้งหมด</div><div class="card-value income">${income.toLocaleString()} ฿</div></div>
+    <div class="card"><div class="card-label">รายจ่ายทั้งหมด</div><div class="card-value expense">${expense.toLocaleString()} ฿</div></div>
+    <div class="card"><div class="card-label">กำไร / ขาดทุน</div><div class="card-value ${profit>=0?'pos':'neg'}">${profit>=0?'+':''}${profit.toLocaleString()} ฿</div></div>
+    <div class="card"><div class="card-label">จำนวนรายการ</div><div class="card-value">${filtered.length}</div></div>`;
+  const incCats={}, expCats={};
+  filtered.filter(e=>e.type==='income').forEach(e=>{incCats[e.cat]=(incCats[e.cat]||0)+e.amount;});
+  filtered.filter(e=>e.type==='expense').forEach(e=>{expCats[e.cat]=(expCats[e.cat]||0)+e.amount;});
+  const chart = document.getElementById('dash-chart');
+  if(!filtered.length) { chart.innerHTML='<div class="empty">ยังไม่มีข้อมูลเดือนนี้</div>'; return; }
+  let html = '<div style="margin-bottom:1rem"><div style="font-size:13px;font-weight:600;color:#555;margin-bottom:8px">รายรับแยกหมวด</div>';
+  const maxI = Math.max(...Object.values(incCats),1);
+  Object.entries(incCats).forEach(([c,v])=>{ html+=`<div class="chart-row"><span class="chart-label">${c}</span><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${Math.round(v/maxI*100)}%;background:#2d7d3a"></div></div><span class="chart-val">${v.toLocaleString()} ฿</span></div>`; });
+  html += '</div><div><div style="font-size:13px;font-weight:600;color:#555;margin-bottom:8px">รายจ่ายแยกหมวด</div>';
+  const maxE = Math.max(...Object.values(expCats),1);
+  Object.entries(expCats).forEach(([c,v])=>{ html+=`<div class="chart-row"><span class="chart-label">${c}</span><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${Math.round(v/maxE*100)}%;background:#c0392b"></div></div><span class="chart-val">${v.toLocaleString()} ฿</span></div>`; });
+  chart.innerHTML = html + '</div>';
+}
+
+function renderRecentList(type) {
+  const el = document.getElementById(type+'-list'); if(!el) return;
+  const list = entriesList().filter(e=>e.type===type).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,15);
+  if(!list.length) { el.innerHTML='<div class="empty">ยังไม่มีรายการ</div>'; return; }
+  const color = type==='income'?'#2d7d3a':'#c0392b';
+  el.innerHTML = `<div class="card-form"><div class="section-title">รายการล่าสุด</div><table><thead><tr><th>วันที่</th><th>หมวด</th><th>หมายเหตุ</th><th style="text-align:right">จำนวน</th><th></th></tr></thead><tbody>`
+    + list.map(e=>`<tr><td>${e.date}</td><td>${e.cat}</td><td style="color:#999">${e.note||'-'}</td><td style="text-align:right;font-weight:600;color:${color}">${e.amount.toLocaleString()} ฿</td><td><button class="btn-sm-del" onclick="deleteEntry('${e.key}')">ลบ</button></td></tr>`).join('')
+    + '</tbody></table></div>';
+}
+
+function renderStock() {
+  const el = document.getElementById('stock-list'); if(!el) return;
+  const list = Object.entries(stockData);
+  if(!list.length) { el.innerHTML='<div class="empty">ยังไม่มีสต็อก</div>'; return; }
+  el.innerHTML = list.map(([k,s])=>`<div class="stock-row">
+    <span>${s.name}</span>
+    <span style="color:${s.qty<=s.min&&s.min>0?'#c0392b':'#1a1a1a'};font-weight:${s.qty<=s.min&&s.min>0?'600':'400'}">${s.qty}${s.qty<=s.min&&s.min>0?' ⚠':''}</span>
+    <span style="color:#888">${s.unit}</span>
+    <span style="color:#888">${s.cost>0?s.cost.toLocaleString()+' ฿':'-'}</span>
+    <button class="btn-sm-del" onclick="deleteStock('${k}')">ลบ</button>
+  </div>`).join('');
+}
+
+function renderHistory() {
+  const month = document.getElementById('hist-month').value;
+  const type = document.getElementById('hist-type').value;
+  let list = entriesList().filter(e=>e.date&&e.date.startsWith(month));
+  if(type!=='all') list = list.filter(e=>e.type===type);
+  list.sort((a,b)=>b.date.localeCompare(a.date));
+  const el = document.getElementById('hist-table');
+  if(!list.length) { el.innerHTML='<div class="empty">ไม่มีรายการในเดือนนี้</div>'; return; }
+  el.innerHTML = `<table><thead><tr><th>วันที่</th><th>ประเภท</th><th>หมวด</th><th>หมายเหตุ</th><th style="text-align:right">จำนวน</th><th></th></tr></thead><tbody>`
+    + list.map(e=>`<tr><td>${e.date}</td><td><span class="badge badge-${e.type}">${e.type==='income'?'รายรับ':'รายจ่าย'}</span></td><td>${e.cat}</td><td style="color:#999">${e.note||'-'}</td><td style="text-align:right;font-weight:600;color:${e.type==='income'?'#2d7d3a':'#c0392b'}">${e.type==='income'?'+':'-'}${e.amount.toLocaleString()} ฿</td><td><button class="btn-sm-del" onclick="deleteEntry('${e.key}')">ลบ</button></td></tr>`).join('')
+    + '</tbody></table>';
+}
+
+// Excel exports
+function dlXlsx(wb, filename) {
+  const out = XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  const url = URL.createObjectURL(new Blob([out],{type:'application/octet-stream'}));
+  const a = document.createElement('a'); a.href=url; a.download=filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('btn-export-month').addEventListener('click', () => {
+  const month = document.getElementById('dash-month').value;
+  const [y,mo] = month.split('-');
+  const filtered = entriesList().filter(e=>e.date&&e.date.startsWith(month)).sort((a,b)=>a.date.localeCompare(b.date));
+  const inc = filtered.filter(e=>e.type==='income'); const exp = filtered.filter(e=>e.type==='expense');
+  const sumI=inc.reduce((s,e)=>s+e.amount,0), sumE=exp.reduce((s,e)=>s+e.amount,0);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[`สรุปรายรับ-รายจ่าย เดือน ${mo}/${y}`,''],[''],[`รายรับรวม (บาท)`,sumI],[`รายจ่ายรวม (บาท)`,sumE],[`กำไร/ขาดทุน (บาท)`,sumI-sumE],[`จำนวนรายการ`,filtered.length]]), 'สรุป');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['วันที่','หมวดหมู่','หมายเหตุ','จำนวน (บาท)'],...inc.map(e=>[e.date,e.cat,e.note||'',e.amount])]), 'รายรับ');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['วันที่','หมวดหมู่','หมายเหตุ','จำนวน (บาท)'],...exp.map(e=>[e.date,e.cat,e.note||'',e.amount])]), 'รายจ่าย');
+  dlXlsx(wb, `รายรับรายจ่าย_${mo}-${y}.xlsx`);
+});
+
+document.getElementById('btn-export-all').addEventListener('click', () => {
+  const wb=XLSX.utils.book_new();
+  const all=entriesList().sort((a,b)=>b.date.localeCompare(a.date));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['วันที่','ประเภท','หมวดหมู่','หมายเหตุ','จำนวน (บาท)'],...all.map(e=>[e.date,e.type==='income'?'รายรับ':'รายจ่าย',e.cat,e.note||'',e.amount])]), 'ทั้งหมด');
+  const months=[...new Set(all.map(e=>e.date.slice(0,7)))].sort();
+  const sumRows=[['เดือน','รายรับ (บาท)','รายจ่าย (บาท)','กำไร/ขาดทุน (บาท)']];
+  months.forEach(m=>{const mE=all.filter(e=>e.date.startsWith(m));const i=mE.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);const x=mE.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);const[y,mo]=m.split('-');sumRows.push([`${mo}/${y}`,i,x,i-x]);});
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sumRows), 'สรุปรายเดือน');
+  const stkList=Object.values(stockData);
+  if(stkList.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['สินค้า','จำนวน','หน่วย','ต้นทุน/หน่วย','แจ้งเตือนเมื่อเหลือ'],...stkList.map(s=>[s.name,s.qty,s.unit,s.cost,s.min])]), 'สต็อก');
+  dlXlsx(wb, `รายรับรายจ่ายทั้งหมด_${new Date().getFullYear()}.xlsx`);
+});
+
+document.getElementById('btn-export-income').addEventListener('click', () => {
+  const list=entriesList().filter(e=>e.type==='income').sort((a,b)=>b.date.localeCompare(a.date));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['วันที่','หมวดหมู่','หมายเหตุ','จำนวน (บาท)'],...list.map(e=>[e.date,e.cat,e.note||'',e.amount])]), 'รายรับ');
+  dlXlsx(wb,'รายรับทั้งหมด.xlsx');
+});
+
+document.getElementById('btn-export-expense').addEventListener('click', () => {
+  const list=entriesList().filter(e=>e.type==='expense').sort((a,b)=>b.date.localeCompare(a.date));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['วันที่','หมวดหมู่','หมายเหตุ','จำนวน (บาท)'],...list.map(e=>[e.date,e.cat,e.note||'',e.amount])]), 'รายจ่าย');
+  dlXlsx(wb,'รายจ่ายทั้งหมด.xlsx');
+});
+
+document.getElementById('btn-export-stock').addEventListener('click', () => {
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['สินค้า','จำนวน','หน่วย','ต้นทุน/หน่วย','แจ้งเตือนเมื่อเหลือ'],...Object.values(stockData).map(s=>[s.name,s.qty,s.unit,s.cost,s.min])]), 'สต็อก');
+  dlXlsx(wb,'สต็อกสินค้า.xlsx');
+});
+
+document.getElementById('btn-export-history').addEventListener('click', () => {
+  const month=document.getElementById('hist-month').value;
+  const type=document.getElementById('hist-type').value;
+  let list=entriesList().filter(e=>e.date&&e.date.startsWith(month));
+  if(type!=='all') list=list.filter(e=>e.type===type);
+  list.sort((a,b)=>b.date.localeCompare(a.date));
+  const[y,mo]=month.split('-');
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['วันที่','ประเภท','หมวดหมู่','หมายเหตุ','จำนวน (บาท)'],...list.map(e=>[e.date,e.type==='income'?'รายรับ':'รายจ่าย',e.cat,e.note||'',e.amount])]), `ประวัติ_${mo}-${y}`);
+  dlXlsx(wb,`ประวัติ_${mo}-${y}.xlsx`);
+});
+</script>
+</body>
+</html>
